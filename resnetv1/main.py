@@ -1,7 +1,7 @@
 import os
 
 import tensorflow as tf
-from resnets import ResNet18, ResNet34
+from resnets import ResNet18, ResNet34, ResNet50
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.datasets import cifar10
 
@@ -12,10 +12,10 @@ x_train = x_train / 255.0
 x_test = x_test / 255.0
 input_shape = (None, 32, 32, 3)
 
-model = ResNet34(input_shape=input_shape)
+model = ResNet50(input_shape=input_shape)
 model.build(input_shape=input_shape)
 print(model.summary())
-optimizer = Adam(learning_rate=0.00001)
+optimizer = Adam(learning_rate=0.0001)
 model.compile(
     optimizer=optimizer,
     loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=False),
