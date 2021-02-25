@@ -1,7 +1,7 @@
 import numpy as np
 import tensorflow as tf
 
-from tensorflow.keras import Model, Sequential
+from tensorflow.keras import Input, Model, Sequential
 from tensorflow.python.keras.layers.convolutional import (
     Activation,
     BatchNormalization,
@@ -52,9 +52,9 @@ class DownsampleBlock(Model):
         return out
 
 
-class UpsampleBlock(Model):
+class DoubleConvBlock(Model):
     def __init__(self, filters):
-        super(UpsampleBlock, self).__init__()
+        super(DoubleConvBlock, self).__init__()
 
         self.deconv = Conv2DTranspose(
             filter=filters[0], kernel_size=(3, 3), strides=1, padding="same"
@@ -100,17 +100,56 @@ class UpsampleBlock(Model):
 
 
 class UNet(Model):
-    def __init__(self):
-        super(UNet, self).__init__()
+    def __init__(self, input_shape, num_classes: int = 10):
+        self.inp_shape = input_shape
+        self.num_classes = num_classes
+        self.build_model()
 
-        self.downsample1 = DownsampleBlock((64, 64))
-        self.mp1 = MaxPooling2D()
+    def build_model(self):
+        self.inp = Input(input_shape=self.input_shape)
 
-        self.downsample2 = DownsampleBlock((128, 128))
-        self.mp2 = MaxPooling2D()
+        self.down1 = DoubleConvBlock([64, 64])(self.inp)
+        self.mp1 = MaxPooling2D()(self.down1)
 
-        self.downsample3 = DownsampleBlock((256, 256))
-        self.mp3 = MaxPooling2D()
+        self.down2 = DoubleConvBlock([128, 128])(self.mp1)
+        self.mp2 = MaxPooling2D()(self.down2)
 
-        self.downsample4 = DownsampleBlock((512, 512))
-        self.mp4 = MaxPooling2D()
+        self.down3 = DoubleConvBlock([256, 256])(self.mp2)
+        self.mp3 = MaxPooling2D()(self.down3)
+
+        self.down4 = DoubleConvBlock([512, 512])(self.mp3)
+        self.mp4 = MaxPooling2D()(self.down4)
+
+        self.down5 = DoubleConvBlock([1024, 1024])(self.mp4)
+
+        self.deconv4 = Conv2DTranspose(filters=512, kernel_size=(2, 2), padding="same")(
+            self.down5
+        )
+        self.concat4 = Concatenate()([self.deconv4, self.down4])
+        self.up4 = DoubleConvBlock([512, 512])(self.concat4)
+
+        self.deconv3 = Conv2DTranspose(filters=512, kernel_size=(2, 2), padding="same")(
+            self.up4
+        )
+        self.concat3 = Concatenate()([self.deconv3, self.down3])
+        self.up3 = DoubleConvBlock([512, 512])(self.concat3)
+
+        self.deconv2 = Conv2DTranspose(filters=512, kernel_size=(2, 2), padding="same")(
+            self.up3
+        )
+        self.concat2 = Concatenate()([self.deconv2, self.down2])
+        self.up2 = DoubleConvBlock([512, 512])(self.concat2)
+
+        self.deconv1 = Conv2DTranspose(filters=512, kernel_size=(2, 2), padding="same")(
+            self.up2
+        )
+        self.concat1 = Concatenate()([self.deconv1, self.down1])
+        self.up1 = DoubleConvBlock([512, 512])(self.concat1)
+
+        self.out = Conv2D(1, kernel_size=(1, 1), activation="sigmoid")(self.up1)
+
+        self.model = Model(inputs=[self.inp], outputs=[self.out])
+
+    def call(self, inputs, training=False):
+
+        return self.model(inputs)
