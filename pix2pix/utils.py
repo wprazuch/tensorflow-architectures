@@ -79,7 +79,9 @@ def load_image_train(image_file):
 
 def load_image_test(image_file):
     input_image, real_image = load(image_file)
-    input_image, real_image = resize(input_image, real_image, IMG_HEIGHT, IMG_WIDTH)
+    input_image, real_image = resize(
+        input_image, real_image, config.IMG_HEIGHT, config.IMG_WIDTH
+    )
     input_image, real_image = normalize(input_image, real_image)
 
     return input_image, real_image
